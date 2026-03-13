@@ -1,0 +1,24 @@
+{
+  "name": "5 No'lu Uygulama Dairesi — İş Listesi",
+  "short_name": "TOKİ Dashboard",
+  "description": "İş listesi takip dashboardu",
+  "start_url": "./is_listesi_dashboard.html",
+  "display": "standalone",
+  "background_color": "#f6f8fa",
+  "theme_color": "#dc6d1a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192/dc6d1a/ffffff?text=TK",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://via.placeholder.com/512/dc6d1a/ffffff?text=TK",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
