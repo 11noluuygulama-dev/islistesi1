@@ -2,7 +2,7 @@
   "name": "5 No'lu Uygulama Dairesi — İş Listesi",
   "short_name": "TOKİ Dashboard",
   "description": "İş listesi takip dashboardu",
-  "start_url": "./is_listesi_dashboard.html",
+  "start_url": "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f6f8fa",
   "theme_color": "#dc6d1a",
