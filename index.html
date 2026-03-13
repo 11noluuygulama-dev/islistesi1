@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>5 No'lu Uygulama Dairesi — İş Listesi</title>
+
+<!-- iOS ve Android Web App Etiketleri (Mobil Kararlılık ve Hata Önleme) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TOKİ Dashboard">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#dc6d1a">
+<link rel="apple-touch-icon" href="https://via.placeholder.com/192">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f8fa;
+    --surface: #ffffff;
+    --border: #d0d7de;
+    --border2: #afb8c1;
+    --text: #1f2328;
+    --muted: #656d76;
+    --accent: #dc6d1a;
+    --green: #1a7f37;
+    --red: #cf222e;
+    --yellow: #9a6700;
+    --blue: #0969da;
+    --purple: #8250df;
+    --safe-top: env(safe-area-inset-top);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    font-family: 'IBM Plex Sans', sans-serif; 
+    background: var(--bg); 
+    color: var(--text); 
+    min-height: 100vh; 
+    font-size: 13px; 
+    -webkit-tap-highlight-color: transparent;
+    padding-top: var(--safe-top);
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .logo span { color: var(--accent); font-weight: 600; }
+  .header-stats { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 4px; }
+  .hstat { text-align: center; min-width: 65px; flex-shrink: 0; }
+  .hstat .val { font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 600; }
+  .hstat .lbl { font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
+  
+  .hstat .val.toplam { color: var(--accent); }
+  .hstat .val.devam { color: var(--blue); }
+  .hstat .val.gecici { color: var(--green); }
+  .hstat .val.kesin { color: var(--purple); }
+  .hstat .val.tasfiye { color: var(--yellow); }
+  .hstat .val.fesih { color: var(--muted); }
+  .hstat .val.konut { color: var(--green); }
+  .hstat .val.dukkan { color: var(--purple); }
+
+  .share-btn {
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text);
+    transition: 0.2s;
+  }
+  .share-btn:hover { background: var(--border); }
+
+  .main { display: flex; height: calc(100vh - 57px); flex-direction: row; }
+  .mobile-filter-toggle { display: none; }
+
+  .sidebar { width: 260px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px; }
+  .filter-section { margin-bottom: 18px; }
+  .filter-title { font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 7px; }
+  .filter-search { width: 100%; background: var(--bg); border: 1px solid var(--border2); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 12px; font-family: 'IBM Plex Sans', sans-serif; outline: none; transition: border-color 0.15s; }
+  .filter-search:focus { border-color: var(--accent); }
+
+  .chip-group { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { background: var(--bg); border: 1px solid var(--border2); color: var(--muted); padding: 4px 10px; border-radius: 20px; font-size: 11px; cursor: pointer; transition: all 0.15s; font-family: 'IBM Plex Mono', monospace; user-select: none; }
+  .chip:hover { border-color: var(--text); color: var(--text); }
+  .chip.active-D { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  .chip.active-G { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
+  .chip.active-K { background: var(--purple); border-color: var(--purple); color: #fff; font-weight: 600; }
+  .chip.active-T { background: var(--yellow); border-color: var(--yellow); color: #fff; font-weight: 600; }
+  .chip.active-F { background: #666; border-color: #666; color: #fff; font-weight: 600; }
+
+  .multi-list { max-height: 140px; overflow-y: auto; border: 1px solid var(--border2); border-radius: 6px; background: var(--bg); }
+  .multi-item { display: flex; align-items: center; gap: 8px; padding: 5px 10px; cursor: pointer; transition: background 0.1s; }
+  .multi-item:hover { background: rgba(0,0,0,0.05); }
+  .multi-item input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; cursor: pointer; }
+  .multi-item label { font-size: 11px; cursor: pointer; flex: 1; }
+  .multi-search { width: 100%; background: var(--bg); border: none; border-bottom: 1px solid var(--border2); color: var(--text); padding: 6px 10px; font-size: 11px; font-family: 'IBM Plex Sans', sans-serif; outline: none; border-radius: 6px 6px 0 0; }
+  .multi-search:focus { border-bottom-color: var(--accent); }
+
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 4px; background: var(--border2); border-radius: 2px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+  .slider-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 3px; font-family: 'IBM Plex Mono', monospace; }
+
+  .upload-btn { display: block; background: var(--surface); border: 1px dashed var(--muted); color: var(--text); padding: 10px; text-align: center; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: 'IBM Plex Sans', sans-serif; transition: all 0.2s; }
+  .upload-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(220, 109, 26, 0.05); }
+
+  .reset-btn { background: transparent; border: 1px solid var(--border2); color: var(--muted); padding: 5px 12px; border-radius: 5px; font-size: 11px; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; transition: all 0.15s; width: 100%; }
+  .reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+  .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .toolbar { padding: 10px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .result-count { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); flex: 1; }
+  .result-count span { color: var(--accent); font-weight: 600; }
+  .sort-select { background: var(--bg); border: 1px solid var(--border2); color: var(--text); padding: 5px 8px; border-radius: 5px; font-size: 11px; font-family: 'IBM Plex Sans', sans-serif; outline: none; cursor: pointer; }
+  .sort-select:focus { border-color: var(--accent); }
+  .view-toggle { display: flex; gap: 4px; }
+  .vbtn { background: var(--bg); border: 1px solid var(--border2); color: var(--muted); padding: 5px 9px; border-radius: 5px; cursor: pointer; font-size: 14px; transition: all 0.15s; }
+  .vbtn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .table-wrap { flex: 1; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { position: sticky; top: 0; z-index: 10; }
+  th { background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 12px; text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); white-space: nowrap; cursor: pointer; user-select: none; }
+  th:hover { color: var(--text); }
+  tr.row { cursor: pointer; transition: background 0.1s; border-bottom: 1px solid var(--border); }
+  tr.row:hover { background: rgba(220, 109, 26, 0.06); }
+  td { padding: 9px 12px; white-space: nowrap; vertical-align: middle; }
+  .td-name { white-space: normal; max-width: 250px; min-width: 160px; font-weight: 500; font-size: 12px; line-height: 1.3; }
+  .td-code { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .td-desc { white-space: normal; max-width: 200px; min-width: 140px; font-size: 11px; color: var(--muted); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .td-date { font-size: 10px; color: var(--muted); white-space: pre-wrap; max-width: 160px; min-width: 100px; line-height: 1.3; word-break: break-word; overflow-wrap: break-word; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap; }
+  .badge-D { background: rgba(9, 105, 218, 0.15); color: var(--blue); border: 1px solid rgba(9, 105, 218, 0.3); }
+  .badge-G { background: rgba(26, 127, 55, 0.15); color: var(--green); border: 1px solid rgba(26, 127, 55, 0.3); }
+  .badge-K { background: rgba(130, 80, 223, 0.15); color: var(--purple); border: 1px solid rgba(130, 80, 223, 0.3); }
+  .badge-T { background: rgba(154, 103, 0, 0.15); color: var(--yellow); border: 1px solid rgba(154, 103, 0, 0.3); }
+  .badge-F { background: rgba(101, 109, 118, 0.15); color: var(--muted); border: 1px solid rgba(101, 109, 118, 0.3); }
+
+  .progress-cell { min-width: 150px; }
+  .prog-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .prog-label { font-size: 9px; color: var(--muted); width: 30px; font-family: 'IBM Plex Mono', monospace; }
+  .prog-bar { flex: 1; height: 4px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 2px; }
+  .prog-fill.program { background: var(--muted); }
+  .prog-fill.fiziki { background: var(--blue); }
+  .prog-fill.hakedis { background: var(--green); }
+  .prog-val { font-family: 'IBM Plex Mono', monospace; font-size: 10px; width: 38px; text-align: right; }
+
+  .kalan-cell { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .kalan-pos { color: var(--green); }
+  .kalan-warn { color: var(--yellow); }
+  .kalan-urg { color: var(--red); }
+  .kalan-over { color: var(--red); font-weight: 600; }
+  .kalan-na { color: var(--muted); font-weight: 400; }
+
+  .bedel { font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; padding: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer; transition: all 0.15s; }
+  .card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+  .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .card-title { font-weight: 500; font-size: 12px; line-height: 1.4; flex: 1; }
+  .card-meta { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+  .card-meta span { color: var(--text); }
+
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; width: 700px; max-width: 95vw; max-height: 85vh; overflow-y: auto; padding: 24px; position: relative; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: var(--bg); border: 1px solid var(--border2); color: var(--text); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .modal-close:hover { color: var(--accent); border-color: var(--accent); }
+  .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; padding-right: 40px; line-height: 1.4; }
+  .modal-code { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--accent); margin-bottom: 16px; }
+  .modal-progs { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
+  .modal-prog-item { flex: 1; min-width: 120px; }
+  .modal-prog-item .mp-label { font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-bottom: 4px; }
+  .modal-prog-item .mp-val { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 600; }
+  .mp-bar-wrap { height: 6px; background: var(--border2); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .mp-bar-fill { height: 100%; border-radius: 3px; }
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .modal-field label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-family: 'IBM Plex Mono', monospace; display: block; margin-bottom: 3px; }
+  .modal-field p { font-size: 13px; }
+  .modal-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .empty { text-align: center; padding: 60px; font-family: 'IBM Plex Mono', monospace; color: var(--muted); font-size: 13px; }
+  
+  @media (max-width: 768px) {
+    header { flex-direction: column; align-items: flex-start; padding: 12px 16px; gap: 12px; }
+    .header-stats { width: 100%; justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+    .hstat { flex: 1; min-width: 22%; margin-bottom: 4px; }
+    .main { flex-direction: column; height: calc(100vh - 120px); }
+    .mobile-filter-toggle { display: block; width: 100%; padding: 12px; background: var(--bg); border: none; border-bottom: 1px solid var(--border); text-align: center; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; }
+    .sidebar { display: none; width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--border); padding: 12px 16px; }
+    .sidebar.open { display: block; }
+    .modal { padding: 16px; width: 95%; max-height: 90vh; }
+    .modal-grid { grid-template-columns: 1fr; gap: 12px; }
+    .modal-progs { flex-direction: column; gap: 12px; }
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">TOKİ · <span>5 No'lu Uygulama Dairesi</span></div>
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <button class="share-btn" onclick="shareDashboard()" title="Sayfayı Paylaş">
+      <span>🔗 Paylaş</span>
+    </button>
+  </div>
+  <div class="header-stats">
+    <div class="hstat"><div class="val toplam" id="hs-toplam">—</div><div class="lbl">Toplam İş</div></div>
+    <div class="hstat"><div class="val devam" id="hs-devam">—</div><div class="lbl">Devam Eden</div></div>
+    <div class="hstat"><div class="val gecici" id="hs-gecici">—</div><div class="lbl">Geçici Kabul</div></div>
+    <div class="hstat"><div class="val kesin" id="hs-kesin">—</div><div class="lbl">Kesin Kabul</div></div>
+    <div class="hstat"><div class="val tasfiye" id="hs-tasfiye">—</div><div class="lbl">Tasfiye</div></div>
+    <div class="hstat"><div class="val fesih" id="hs-fesih">—</div><div class="lbl">Fesih</div></div>
+    <div class="hstat"><div class="val konut" id="hs-konut">—</div><div class="lbl">Toplam Konut</div></div>
+    <div class="hstat"><div class="val dukkan" id="hs-dukkan">—</div><div class="lbl">Top. Ticari</div></div>
+  </div>
+</header>
+
+<div class="main">
+  <button id="mobile-filter-toggle" class="mobile-filter-toggle">⚙️ Filtreleri Göster ⌄</button>
+  
+  <div class="sidebar" id="sidebar">
+    <div class="filter-section">
+      <label class="upload-btn" for="excel-upload">
+        <input type="file" id="excel-upload" accept=".xlsx, .xls" style="display:none;">
+        <span id="upload-text">📁 Excel Yükle</span>
+      </label>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">Arama</div>
+      <input class="filter-search" id="search" placeholder="İhale adı, yüklenici, kod..." type="text">
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">İş Durumu</div>
+      <div class="chip-group" id="durum-chips">
+        <div class="chip active-D" data-d="D">Devam</div>
+        <div class="chip active-G" data-d="G">Geç. Kabul</div>
+        <div class="chip active-K" data-d="K">Kesin Kabul</div>
+        <div class="chip active-T" data-d="T">Tasfiye</div>
+        <div class="chip active-F" data-d="F">Fesih</div>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">İl <span id="il-count" style="color:var(--accent);font-size:10px"></span></div>
+      <input class="multi-search" id="il-search" placeholder="İl ara..." type="text">
+      <div class="multi-list" id="il-list"></div>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">İlçe <span id="ilce-count" style="color:var(--accent);font-size:10px"></span></div>
+      <input class="multi-search" id="ilce-search" placeholder="İlçe ara..." type="text">
+      <div class="multi-list" id="ilce-list"></div>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">İşin Uzmanı <span id="uzman-count" style="color:var(--accent);font-size:10px"></span></div>
+      <input class="multi-search" id="uzman-search" placeholder="Uzman ara..." type="text">
+      <div class="multi-list" id="uzman-list"></div>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">Yapı Cinsi <span id="yapi-count" style="color:var(--accent);font-size:10px"></span></div>
+      <input class="multi-search" id="yapi-search" placeholder="Yapı cinsi ara..." type="text">
+      <div class="multi-list" id="yapi-list"></div>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">Şube No</div>
+      <select class="filter-search" id="sube-select" style="cursor:pointer">
+        <option value="">Tüm Şubeler</option>
+      </select>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-title">Kalan Gün Filtresi (En Fazla)</div>
+      <input type="range" id="kalan-slider" min="-365" max="1000" value="1000" step="5">
+      <div class="slider-labels">
+        <span>-365g</span>
+        <span id="kalan-val" style="color:var(--accent)">Hepsi</span>
+        <span>Hepsi</span>
+      </div>
+    </div>
+
+    <button class="reset-btn" id="reset-btn">↺ Filtreleri Sıfırla</button>
+  </div>
+
+  <div class="content">
+    <div class="toolbar">
+      <div class="result-count" id="result-count"><span>0</span> iş</div>
+      <select class="sort-select" id="sort-select">
+        <option value="sira">Sıra No</option>
+        <option value="kalan-asc">Kalan Gün (en az önce)</option>
+        <option value="kalan-desc">Kalan Gün (en fazla önce)</option>
+        <option value="bedel-desc">Bedel (büyükten küçüğe)</option>
+        <option value="fiziki-desc">Fiziki % (yüksekten)</option>
+      </select>
+      <div class="view-toggle">
+        <button class="vbtn active" id="vbtn-table" title="Tablo">⊞</button>
+        <button class="vbtn" id="vbtn-card" title="Kart">▦</button>
+      </div>
+    </div>
+    <div class="table-wrap" id="content-area"></div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-overlay">
+  <div class="modal" id="modal">
+    <button class="modal-close" id="modal-close">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+let DATA = [];
+let filteredData = [];
+let selectedDurums = new Set(['D','G','K','T','F']);
+let selectedIller = new Set();
+let selectedIlceler = new Set();
+let selectedUzmanlar = new Set();
+let selectedYapilar = new Set();
+let viewMode = 'table';
+let sortMode = 'sira';
+
+function shareDashboard() {
+  const shareData = {
+    title: 'TOKİ İş Listesi Dashboard',
+    text: '5 No\'lu Uygulama Dairesi Güncel İş Listesi',
+    url: window.location.href
+  };
+
+  if (navigator.share) {
+    navigator.share(shareData).catch(err => console.log('Paylaşım hatası:', err));
+  } else {
+    const dummy = document.createElement('input');
+    document.body.appendChild(dummy);
+    dummy.value = window.location.href;
+    dummy.select();
+    document.execCommand('copy');
+    document.body.removeChild(dummy);
+    alert('Link kopyalandı! Tarayıcı paylaşımı desteklemiyor.');
+  }
+}
+
+function escapeHtml(text) {
+  if (!text) return "";
+  return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function init() {
+  const iller = [...new Set(DATA.map(d => d['İL']).filter(Boolean))].sort();
+  buildMultiList('il-list', iller, selectedIller, 'il-search', 'il-count', () => {
+    updateDistrictAndExpertList();
+    applyFilters();
+  });
+  
+  updateDistrictAndExpertList();
+
+  const yapilar = [...new Set(DATA.map(d => d['YAPI CİNSİ']).filter(Boolean))].sort();
+  buildMultiList('yapi-list', yapilar, selectedYapilar, 'yapi-search', 'yapi-count', applyFilters);
+  
+  const subeler = [...new Set(DATA.map(d => d['ŞUBE NO']).filter(x => x !== '' && x !== null && x !== undefined))].sort((a,b)=>String(a).localeCompare(String(b)));
+  const subeSel = document.getElementById('sube-select');
+  subeSel.innerHTML = '<option value="">Tüm Şubeler</option>';
+  subeler.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = 'Şube ' + s; subeSel.appendChild(o); });
+  applyFilters();
+}
+
+function updateDistrictAndExpertList() {
+  let subData = DATA;
+  if (selectedIller.size > 0) {
+    subData = DATA.filter(d => selectedIller.has(d['İL']));
+  }
+  const availableIlceler = [...new Set(subData.map(d => d['İLÇE']).filter(Boolean))].sort();
+  selectedIlceler.forEach(ilce => { if (!new Set(availableIlceler).has(ilce)) selectedIlceler.delete(ilce); });
+  buildMultiList('ilce-list', availableIlceler, selectedIlceler, 'ilce-search', 'ilce-count', applyFilters);
+  const availableUzmanlar = [...new Set(subData.map(d => d['UZMAN']).filter(Boolean))].sort();
+  selectedUzmanlar.forEach(uzman => { if (!new Set(availableUzmanlar).has(uzman)) selectedUzmanlar.delete(uzman); });
+  buildMultiList('uzman-list', availableUzmanlar, selectedUzmanlar, 'uzman-search', 'uzman-count', applyFilters);
+}
+
+function buildMultiList(listId, items, selectedSet, searchId, countId, onChange) {
+  const list = document.getElementById(listId);
+  const searchEl = document.getElementById(searchId);
+  function renderList(filter) {
+    list.innerHTML = '';
+    const filtered = filter ? items.filter(x => x.toLowerCase().includes(filter.toLowerCase())) : items;
+    filtered.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'multi-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = listId + '_' + item;
+      cb.checked = selectedSet.has(item);
+      cb.onchange = () => {
+        if (cb.checked) selectedSet.add(item);
+        else selectedSet.delete(item);
+        document.getElementById(countId).textContent = selectedSet.size > 0 ? '(' + selectedSet.size + ' seçili)' : '';
+        onChange();
+      };
+      const lbl = document.createElement('label');
+      lbl.htmlFor = cb.id;
+      lbl.textContent = item;
+      div.appendChild(cb);
+      div.appendChild(lbl);
+      list.appendChild(div);
+    });
+  }
+  renderList('');
+  searchEl.oninput = (e) => renderList(e.target.value);
+}
+
+function applyFilters() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const sube = document.getElementById('sube-select').value;
+  const kalanMax = parseInt(document.getElementById('kalan-slider').value);
+  filteredData = DATA.filter(d => {
+    if (!selectedDurums.has(d['İŞ DURUMU'])) return false;
+    if (selectedIller.size > 0 && !selectedIller.has(d['İL'])) return false;
+    if (selectedIlceler.size > 0 && !selectedIlceler.has(d['İLÇE'])) return false;
+    if (selectedUzmanlar.size > 0 && !selectedUzmanlar.has(d['UZMAN'])) return false;
+    if (selectedYapilar.size > 0 && !selectedYapilar.has(d['YAPI CİNSİ'])) return false;
+    if (sube && String(d['ŞUBE NO']) !== String(sube)) return false;
+    if (kalanMax < 1000 && (d['KALAN_GUN'] === null || d['KALAN_GUN'] === '' || d['KALAN_GUN'] > kalanMax)) return false;
+    if (search) {
+      const hay = [d['İHALE ADI'],d['YÜKLENİCİ FİRMA'],String(d['İHALE KODU']),d['İL'],d['İLÇE'],d['UZMAN'],d['ACIKLAMA']].join(' ').toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  sortData();
+  updateHeaderStats();
+  render();
+  document.getElementById('result-count').innerHTML = '<span>' + filteredData.length + '</span> iş gösteriliyor';
+}
+
+function updateHeaderStats() {
+  document.getElementById('hs-toplam').textContent = filteredData.length;
+  document.getElementById('hs-devam').textContent = filteredData.filter(d => d['İŞ DURUMU'] === 'D').length;
+  document.getElementById('hs-gecici').textContent = filteredData.filter(d => d['İŞ DURUMU'] === 'G').length;
+  document.getElementById('hs-kesin').textContent = filteredData.filter(d => d['İŞ DURUMU'] === 'K').length;
+  document.getElementById('hs-tasfiye').textContent = filteredData.filter(d => d['İŞ DURUMU'] === 'T').length;
+  document.getElementById('hs-fesih').textContent = filteredData.filter(d => d['İŞ DURUMU'] === 'F').length;
+  let totalKonut = 0; let totalDukkan = 0;
+  filteredData.forEach(d => {
+    if(d.UNITS) {
+      d.UNITS.forEach(u => {
+        const type = String(u.type).toUpperCase();
+        if(type === "KONUT" || type === "KÖY EVİ") totalKonut += Number(u.count);
+        if(type === "DÜKKAN" || type === "TİCARET" || type === "TİCARET MERKEZİ") totalDukkan += Number(u.count);
+      });
+    }
+  });
+  document.getElementById('hs-konut').textContent = totalKonut.toLocaleString('tr-TR');
+  document.getElementById('hs-dukkan').textContent = totalDukkan.toLocaleString('tr-TR');
+}
+
+function sortData() {
+  filteredData.sort((a, b) => {
+    switch(sortMode) {
+      case 'sira': return a['SIRA NO'] - b['SIRA NO'];
+      case 'kalan-asc': return (a['KALAN_GUN']!=null?a['KALAN_GUN']:99999) - (b['KALAN_GUN']!=null?b['KALAN_GUN']:99999);
+      case 'kalan-desc': return (b['KALAN_GUN']!=null?b['KALAN_GUN']:-99999) - (a['KALAN_GUN']!=null?a['KALAN_GUN']:-99999);
+      case 'bedel-desc': return b['İHALE BEDELİ (KDV HARİÇ)'] - a['İHALE BEDELİ (KDV HARİÇ)'];
+      case 'fiziki-desc': return b['FİZİKİ GERÇEKLEŞME YÜZDESİ'] - a['FİZİKİ GERÇEKLEŞME YÜZDESİ'];
+      default: return 0;
+    }
+  });
+}
+
+function pct(v) { return v ? '%' + (v * 100).toFixed(2).replace('.', ',') : '%0,00'; }
+function fmtBedel(v) {
+  if (!v) return '—';
+  if (v >= 1e9) return (v/1e9).toFixed(2) + ' Mr ₺';
+  if (v >= 1e6) return (v/1e6).toFixed(1) + ' Mn ₺';
+  return v.toLocaleString('tr-TR', { maximumFractionDigits: 0 }) + ' ₺';
+}
+function fmtBedelExact(v) { return v ? Number(v).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺' : '—'; }
+
+function kalanHtml(d) {
+  const k = d['KALAN_GUN'];
+  if (k === null || k === '') return '<span class="kalan-cell kalan-na">—</span>';
+  let cls = k < 0 ? 'kalan-over' : (k <= 30 ? 'kalan-urg' : (k <= 90 ? 'kalan-warn' : 'kalan-pos'));
+  return `<span class="kalan-cell ${cls}">${k} gün</span>`;
+}
+
+function progressCells(d) {
+  var prg = d['İŞ PROGRAMINA GÖRE YÜZDESİ'], fiz = d['FİZİKİ GERÇEKLEŞME YÜZDESİ'], hak = d['HAKEDİŞ YÜZDESİ'];
+  return `<div class="progress-cell">
+    <div class="prog-row"><span class="prog-label">PRG</span><div class="prog-bar"><div class="prog-fill program" style="width:${Math.min(100,prg*100)}%"></div></div><span class="prog-val">${pct(prg)}</span></div>
+    <div class="prog-row"><span class="prog-label">FİZ</span><div class="prog-bar"><div class="prog-fill fiziki" style="width:${Math.min(100,fiz*100)}%"></div></div><span class="prog-val" style="color:var(--blue)">${pct(fiz)}</span></div>
+    <div class="prog-row"><span class="prog-label">HAK</span><div class="prog-bar"><div class="prog-fill hakedis" style="width:${Math.min(100,hak*100)}%"></div></div><span class="prog-val" style="color:var(--green)">${pct(hak)}</span></div>
+  </div>`;
+}
+
+function render() {
+  const area = document.getElementById('content-area');
+  if (DATA.length === 0) { area.innerHTML = '<div class="empty">Excel dosyası yükleyiniz.</div>'; return; }
+  if (filteredData.length === 0) { area.innerHTML = '<div class="empty">Bulunamadı.</div>'; return; }
+  if (window.innerWidth <= 768 && viewMode === 'table' && !window.hasSwitchedToCard) {
+    viewMode = 'card'; document.getElementById('vbtn-card').classList.add('active'); document.getElementById('vbtn-table').classList.remove('active'); window.hasSwitchedToCard = true;
+  }
+  if (viewMode === 'table') renderTable(area); else renderCards(area);
+}
+
+function renderTable(area) {
+  const rows = filteredData.map(d => `<tr class="row" data-id="${d['SIRA NO']}">
+    <td class="td-code">${d['SIRA NO']}</td>
+    <td class="td-code">${d['İHALE KODU']}</td>
+    <td class="td-name">${d['İHALE ADI']}</td>
+    <td>${d['İL']}${d['İLÇE']?`<br><small>${d['İLÇE']}</small>`:''}</td>
+    <td><span class="badge badge-${d['İŞ DURUMU']}">${d['DURUM_TR']}</span></td>
+    <td class="td-desc">${d['ACIKLAMA']||'—'}</td>
+    <td>${progressCells(d)}</td>
+    <td>${kalanHtml(d)}</td>
+    <td class="td-date">${d['BİTİM_BASE_STR']}</td>
+    <td class="td-date">${d['RAW_UZATIM_STR']}</td>
+    <td class="bedel">${fmtBedel(d['İHALE BEDELİ (KDV HARİÇ)'])}</td>
+  </tr>`).join('');
+  area.innerHTML = `<table><thead><tr><th>#</th><th>Kod</th><th>İhale Adı</th><th>İl/İlçe</th><th>Durum</th><th>Açıklama</th><th>İlerleme</th><th>Kalan</th><th>Bitiş</th><th>Uzatım</th><th>Bedel</th></tr></thead><tbody>${rows}</tbody></table>`;
+  area.querySelectorAll('tr.row').forEach(tr => tr.onclick = () => openModal(tr.dataset.id));
+}
+
+function renderCards(area) {
+  const cards = filteredData.map(d => `<div class="card" data-id="${d['SIRA NO']}">
+    <div class="card-header"><div class="card-title">${d['İHALE ADI']}</div><span class="badge badge-${d['İŞ DURUMU']}">${d['DURUM_TR']}</span></div>
+    <div class="card-meta">${d['İL']} / ${d['İLÇE']} · <span>${d['İHALE KODU']}</span></div>
+    <div style="font-size:11px; margin-bottom:8px"><strong>Açıklama:</strong> ${d['ACIKLAMA']||'—'}</div>
+    ${progressCells(d)}
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:10px;">
+      <div><div style="font-size:10px">Bitiş: ${d['BİTİM_BASE_STR']}</div><div style="font-size:10px; color:var(--muted)">Uzatım: ${d['RAW_UZATIM_STR']}</div></div>
+      <div>${kalanHtml(d)}</div>
+    </div>
+  </div>`).join('');
+  area.innerHTML = `<div class="cards-grid">${cards}</div>`;
+  area.querySelectorAll('.card').forEach(c => c.onclick = () => openModal(c.dataset.id));
+}
+
+function openModal(siraNo) {
+  const d = DATA.find(x => String(x['SIRA NO']) === String(siraNo));
+  if (!d) return;
+  const unitList = d.UNITS && d.UNITS.length > 0 ? d.UNITS.map(u => `${u.count} ${u.type}`).join(', ') : "—";
+  const driveSearchQuery = d['İHALE KODU'] || d['İHALE ADI'];
+  const driveSearchUrl = `https://drive.google.com/drive/search?q=${encodeURIComponent(driveSearchQuery)}`;
+  const prg = d['İŞ PROGRAMINA GÖRE YÜZDESİ'] || 0;
+  const fiz = d['FİZİKİ GERÇEKLEŞME YÜZDESİ'] || 0;
+  const hak = d['HAKEDİŞ YÜZDESİ'] || 0;
+  document.getElementById('modal-content').innerHTML = `
+    <a href="${driveSearchUrl}" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #ddd; padding: 8px 16px; border-radius: 6px; font-size: 12px; color: #444; text-decoration: none; font-weight: 500; margin-bottom: 15px; transition: 0.2s;">
+        <svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px;"><path d="M7.71,3.5L1.15,15L4.58,21L11.13,9.5M9.73,15L6.3,21H19.42L22.85,15M15.42,3.5H8.58L15.13,15H22M11.13,9.5H17.42L14.58,15H8.58L11.13,9.5Z" /></svg>
+        Google Drive'da "${driveSearchQuery}" Ara
+    </a>
+    <div class="modal-title">${d['İHALE ADI']}</div>
+    <div class="modal-code">#${d['SIRA NO']} · Kod: ${d['İHALE KODU']} · <span class="badge badge-${d['İŞ DURUMU']}">${d['DURUM_TR']}</span></div>
+    <div class="modal-progs">
+      <div class="modal-prog-item">
+        <div class="mp-label">İŞ PROGRAMI</div>
+        <div class="mp-val">${pct(prg)}</div>
+        <div class="mp-bar-wrap"><div class="mp-bar-fill" style="width:${Math.min(100, prg*100)}%; background:var(--muted)"></div></div>
+      </div>
+      <div class="modal-prog-item">
+        <div class="mp-label">FİZİKİ GERÇEKLEŞME</div>
+        <div class="mp-val" style="color:var(--blue)">${pct(fiz)}</div>
+        <div class="mp-bar-wrap"><div class="mp-bar-fill" style="width:${Math.min(100, fiz*100)}%; background:var(--blue)"></div></div>
+      </div>
+      <div class="modal-prog-item">
+        <div class="mp-label">HAKEDİŞ</div>
+        <div class="mp-val" style="color:var(--green)">${pct(hak)}</div>
+        <div class="mp-bar-wrap"><div class="mp-bar-fill" style="width:${Math.min(100, hak*100)}%; background:var(--green)"></div></div>
+      </div>
+    </div>
+    <hr class="modal-divider">
+    <div class="modal-grid">
+      <div class="modal-field"><label>Tüm Üniteler</label><p style="font-weight:600; color:var(--accent)">${unitList}</p></div>
+      <div class="modal-field"><label>İnşaat Uzmanı</label><p>${d['UZMAN'] || '—'}</p></div>
+      <div class="modal-field"><label>İl / İlçe</label><p>${d['İL']} / ${d['İLÇE']}</p></div>
+      <div class="modal-field"><label>Yüklenici Firma</label><p>${d['YÜKLENİCİ FİRMA'] || '—'}</p></div>
+      <div class="modal-field"><label>İhale Bedeli</label><p style="color:var(--accent);font-weight:600;">${fmtBedelExact(d['İHALE BEDELİ (KDV HARİÇ)'])}</p></div>
+      <div class="modal-field"><label>İş Bitiş</label><p>${d['BİTİM_BASE_STR']}</p></div>
+      <div class="modal-field"><label>Süre Uzatımlı Bitiş</label><p style="white-space:pre-wrap">${d['RAW_UZATIM_STR']}</p></div>
+      <div class="modal-field" style="grid-column: span 2;"><label>Açıklamalar</label><p style="font-size:12px; line-height:1.5; white-space:pre-wrap;">${d['ACIKLAMA'] || '—'}</p></div>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+document.getElementById('mobile-filter-toggle').onclick = function() {
+  const s = document.getElementById('sidebar'); s.classList.toggle('open');
+  this.innerHTML = s.classList.contains('open') ? '⚙️ Filtreleri Gizle ⌃' : '⚙️ Filtreleri Göster ⌄';
+};
+
+document.getElementById('durum-chips').onclick = e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  const d = c.dataset.d;
+  if (selectedDurums.has(d)) { selectedDurums.delete(d); c.className = 'chip'; }
+  else { selectedDurums.add(d); c.className = 'chip active-' + d; }
+  applyFilters();
+};
+
+document.getElementById('search').oninput = applyFilters;
+document.getElementById('sube-select').onchange = applyFilters;
+document.getElementById('sort-select').onchange = e => { sortMode = e.target.value; applyFilters(); };
+document.getElementById('kalan-slider').oninput = e => {
+  const v = parseInt(e.target.value);
+  document.getElementById('kalan-val').textContent = v >= 1000 ? 'Hepsi' : '≤ ' + v + ' gün';
+  applyFilters();
+};
+
+document.getElementById('reset-btn').onclick = () => {
+  selectedDurums = new Set(['D','G','K','T','F']);
+  document.querySelectorAll('.chip[data-d]').forEach(c => c.className = 'chip active-' + c.dataset.d);
+  document.getElementById('search').value = ''; document.getElementById('sube-select').value = ''; document.getElementById('kalan-slider').value = 1000;
+  document.getElementById('kalan-val').textContent = 'Hepsi';
+  selectedIller.clear(); selectedIlceler.clear(); selectedUzmanlar.clear(); selectedYapilar.clear();
+  document.querySelectorAll('.multi-list input').forEach(cb => cb.checked = false);
+  updateDistrictAndExpertList(); applyFilters();
+};
+
+document.getElementById('vbtn-table').onclick = () => { viewMode='table'; document.getElementById('vbtn-table').classList.add('active'); document.getElementById('vbtn-card').classList.remove('active'); render(); };
+document.getElementById('vbtn-card').onclick = () => { viewMode='card'; document.getElementById('vbtn-card').classList.add('active'); document.getElementById('vbtn-table').classList.remove('active'); render(); };
+document.getElementById('modal-close').onclick = () => document.getElementById('modal-overlay').classList.remove('open');
+document.getElementById('modal-overlay').onclick = e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); };
+
+document.getElementById('excel-upload').onchange = function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  document.getElementById('upload-text').textContent = '⏳ Yükleniyor...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: "A", defval: "", raw: true });
+      let headerRowIndex = 0;
+      for (let i = 0; i < rawJson.length; i++) {
+          let rowStr = Object.values(rawJson[i] || {}).join(" ").toUpperCase();
+          if (rowStr.includes("İHALE") || rowStr.includes("DURUM") || rowStr.includes("SIRA")) { headerRowIndex = i; break; }
+      }
+      let headers = rawJson[headerRowIndex] || {};
+      let processed = []; let today = new Date(); today.setHours(0,0,0,0);
+      function excelToDateStr(s) {
+          let d = new Date(Math.round((s - 25569) * 86400 * 1000));
+          d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+          return `${('0'+d.getDate()).slice(-2)}.${('0'+(d.getMonth()+1)).slice(-2)}.${d.getFullYear()}`;
+      }
+      function parseDate(val) {
+          if (!val) return { str: "", date: null, clean: "" };
+          let clean = String(val).trim();
+          if (typeof val === 'number') {
+              let s = excelToDateStr(val); let p = s.split('.');
+              return { str: s, date: new Date(p[2], p[1]-1, p[0]), clean: s };
+          }
+          clean = clean.replace(/\b(4[0-9]{4})\b/g, m => excelToDateStr(parseInt(m,10)));
+          let m = clean.match(/(\d{1,2})[\.\/,-](\d{1,2})[\.\/,-](\d{2,4})/g);
+          if (m && m.length > 0) {
+              let ls = m[m.length - 1]; let p = ls.split(/[\.\/,-]/);
+              let y = parseInt(p[2]) < 100 ? parseInt(p[2])+2000 : parseInt(p[2]);
+              let d = new Date(y, parseInt(p[1])-1, parseInt(p[0]));
+              return { str: ls, date: d, clean: clean };
+          }
+          return { str: clean, date: null, clean: clean };
+      }
+      for(let i = headerRowIndex + 1; i < rawJson.length; i++) {
+          let row = rawJson[i]; let obj = {};
+          Object.keys(headers).forEach(c => { let h = String(headers[c]).trim(); if(h) obj[h] = row[c]; });
+          let units = []; const unitCols = ["AF","AG","AH","AI","AJ","AK","AL","AM","AN","AO","AP","AQ","AR","AS","AT","AU"];
+          for(let j=0; j < unitCols.length; j+=2) { if(row[unitCols[j]] && row[unitCols[j+1]]) units.push({ count: row[unitCols[j]], type: row[unitCols[j+1]] }); }
+          obj.UNITS = units; obj["İLÇE"] = row["AX"] || ""; obj["UZMAN"] = row["Z"] || ""; obj["ACIKLAMA"] = row["AE"] || "";
+          let dKod = String(row["D"] || "").trim().toUpperCase();
+          let dTr = dKod==='D'?'Devam Ediyor':dKod==='G'?'Geçici Kabul':dKod==='K'?'Kesin Kabul':dKod==='T'?'Tasfiye':dKod==='F'?'Fesih':dKod;
+          let bRes = parseDate(row["P"]), eRes = parseDate(row["Q"]);
+          let fDateObj = eRes.date || bRes.date;
+          let kalan = (dKod === 'D' && fDateObj) ? Math.ceil((fDateObj - today)/86400000) : null;
+          obj["İŞ DURUMU"] = dKod; obj["DURUM_TR"] = dTr; obj["BİTİM_BASE_STR"] = bRes.str || "—";
+          obj["KALAN_GUN"] = kalan; obj["RAW_UZATIM_STR"] = eRes.clean || "—";
+          let bVal = row["K"];
+          if (typeof bVal === 'number') obj["İHALE BEDELİ (KDV HARİÇ)"] = bVal;
+          else { let c = String(bVal||'').replace(/[^0-9,-]/g, '').replace(',', '.'); obj["İHALE BEDELİ (KDV HARİÇ)"] = c ? parseFloat(c) : 0; }
+          let fc = (arr) => { let l = Object.keys(headers).find(c => arr.some(s => String(headers[c]).toUpperCase().includes(s))); return l ? row[l] : ""; };
+          if(!obj["İHALE ADI"]) obj["İHALE ADI"] = fc(["İHALE ADI", "IS ADI", "İŞ ADI"]);
+          if(!obj["İL"]) obj["İL"] = fc(["İL", "SEHİR", "ŞEHİR"]);
+          if(!obj["SIRA NO"]) obj["SIRA NO"] = fc(["SIRA"]);
+          if(!obj["İHALE KODU"]) obj["İHALE KODU"] = fc(["KOD"]);
+          if(!obj["ŞUBE NO"]) obj["ŞUBE NO"] = fc(["ŞUBE"]);
+          if(!obj["YAPI CİNSİ"]) obj["YAPI CİNSİ"] = fc(["YAPI CİNSİ"]);
+          if(!obj["ACIKLAMA"] || obj["ACIKLAMA"] === "") obj["ACIKLAMA"] = fc(["AÇIKLAMA", "NOTLAR", "DETAY"]);
+          let pp = (v) => { if(!v) return 0; if(typeof v === 'number') return v > 1 ? v/100 : v; let n = parseFloat(String(v).replace('%','').replace(',','.')); return n>1?n/100:n||0; };
+          obj["İŞ PROGRAMINA GÖRE YÜZDESİ"] = pp(fc(["İŞ PROGRAMI"]));
+          obj["FİZİKİ GERÇEKLEŞME YÜZDESİ"] = pp(fc(["FİZİKİ"]));
+          obj["HAKEDİŞ YÜZDESİ"] = pp(fc(["HAKEDİŞ"]));
+          if (obj["İHALE ADI"]) processed.push(obj);
+      }
+      if(processed.length > 0) { DATA = processed; init(); document.getElementById('upload-text').textContent = '✅ Yüklendi'; }
+    } catch (e) { console.error(e); alert("Dosya hatası!"); }
+    document.getElementById('excel-upload').value = '';
+  };
+  reader.readAsArrayBuffer(file);
+};
+init();
+</script>
+</body>
+</html>
